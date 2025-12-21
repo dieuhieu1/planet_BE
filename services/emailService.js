@@ -7,15 +7,15 @@ const transporter = nodemailer.createTransport({
 
     secure: false, // true for 465, false for other ports
     auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
+        user: process.env.EMAIL_NAME,
+        pass: process.env.EMAIL_APP_PASSWORD
     }
 });
 
 const sendEmail = async (to, subject, text, html) => {
     try {
         const info = await transporter.sendMail({
-            from: `"Planet Web" <${process.env.EMAIL_USER}>`, // sender address
+            from: `"Planet Web" <no-reply@planet_web.com>`, // sender address
             to, // list of receivers
             subject, // Subject line
             text, // plain text body

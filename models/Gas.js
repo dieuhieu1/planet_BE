@@ -8,15 +8,15 @@ module.exports = (sequelize, DataTypes) => {
     }
     Gas.init({
         id: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
             primaryKey: true
         },
         name: DataTypes.STRING,
-        chemicalFormula: DataTypes.STRING,
-        colorHex: DataTypes.STRING
     }, {
         sequelize,
         modelName: 'Gas',
+        tableName: 'Gases',
         timestamps: false
     });
     return Gas;
