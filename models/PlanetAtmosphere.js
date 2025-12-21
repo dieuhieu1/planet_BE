@@ -3,12 +3,13 @@ const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
     class PlanetAtmosphere extends Model {
         static associate(models) {
-            // Junction table usually doesn't need many associations unless it has extra logic
+            PlanetAtmosphere.belongsTo(models.Planet, { foreignKey: 'planetId' });
+            PlanetAtmosphere.belongsTo(models.Gas, { foreignKey: 'gasId' });
         }
     }
     PlanetAtmosphere.init({
         planetId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             primaryKey: true,
             references: {
                 model: 'Planets',
@@ -16,7 +17,7 @@ module.exports = (sequelize, DataTypes) => {
             }
         },
         gasId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             primaryKey: true,
             references: {
                 model: 'Gases',

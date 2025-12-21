@@ -8,11 +8,12 @@ module.exports = (sequelize, DataTypes) => {
     }
     QuestionOption.init({
         id: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
             primaryKey: true
         },
         questionId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             references: {
                 model: 'Questions',
                 key: 'id'

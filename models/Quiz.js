@@ -11,18 +11,19 @@ module.exports = (sequelize, DataTypes) => {
     }
     Quiz.init({
         id: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
             primaryKey: true
         },
         planetId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             references: {
                 model: 'Planets',
                 key: 'id'
             }
         },
         creatorId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             references: {
                 model: 'Users',
                 key: 'id'
@@ -35,6 +36,7 @@ module.exports = (sequelize, DataTypes) => {
     }, {
         sequelize,
         modelName: 'Quiz',
+        tableName: 'Quizzes',
     });
     return Quiz;
 };

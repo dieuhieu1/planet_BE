@@ -1,14 +1,26 @@
 const db = require('../models');
-const { success, error } = require('./responseHelper');
+const { success, error, paginatedSuccess } = require('./responseHelper');
 
 const planetController = {
     // Get all planets (summary)
     getAll: async (req, res) => {
         try {
-            const planets = await db.Planet.findAll({
-                attributes: ['id', 'planetId', 'nameVi', 'nameEn', 'image2d', 'type']
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const offset = (page - 1) * limit;
+
+            const { count, rows } = await db.Planet.findAndCountAll({
+                include: [
+                    { model: db.PlanetPhysical, as: 'physical' },
+                    { model: db.PlanetOrbit, as: 'orbit' },
+                    { model: db.Moon, as: 'moons' },
+                    { model: db.Gas, as: 'gases', through: { attributes: ['percentage'] } }
+                ],
+                distinct: true, // Important for correct count with includes
+                limit,
+                offset
             });
-            return success(res, planets);
+            return paginatedSuccess(res, rows, count, page, limit);
         } catch (err) {
             return error(res, 'Failed to fetch planets', 500, err.message);
         }
@@ -24,7 +36,6 @@ const planetController = {
                     { model: db.PlanetPhysical, as: 'physical' },
                     { model: db.PlanetOrbit, as: 'orbit' },
                     { model: db.Moon, as: 'moons' },
-                    { model: db.PlanetEvent, as: 'events' },
                     { model: db.Gas, as: 'gases', through: { attributes: ['percentage'] } }
                 ]
             });
@@ -41,35 +52,141 @@ const planetController = {
 
     // Create Planet
     create: async (req, res) => {
+        const transaction = await db.sequelize.transaction();
         try {
             const data = req.body;
+
+            // 1. Validation
+            const { physical, orbit, moons, gases } = data;
+
+            if (!physical || typeof physical !== 'object') {
+                return error(res, 'Missing or invalid "physical" data', 400);
+            }
+            if (!orbit || typeof orbit !== 'object') {
+                return error(res, 'Missing or invalid "orbit" data', 400);
+            }
+            if (!Array.isArray(moons) || moons.length === 0) {
+                // Or allow empty moons if that's valid business logic, user said "require full info" so enforcing presence is safer
+                return error(res, 'Missing or invalid "moons" array', 400);
+            }
+            if (!Array.isArray(gases) || gases.length === 0) {
+                return error(res, 'Missing or invalid "gases" array', 400);
+            }
+
+            // 2. Create Planet and direct associations
             const newPlanet = await db.Planet.create(data, {
                 include: [
                     { model: db.PlanetPhysical, as: 'physical' },
-                    { model: db.PlanetOrbit, as: 'orbit' }
-                    // Associations like moons/events usually added separately or via deeply nested create if structured right
+                    { model: db.PlanetOrbit, as: 'orbit' },
+                    { model: db.Moon, as: 'moons' }
+                ],
+                transaction
+            });
+
+            // 3. Link Gases (Atmosphere)
+            // gases expected format: [{ gasId: "H2", percentage: 75 }, ...]
+            const atmosphereData = gases.map(g => ({
+                planetId: newPlanet.id,
+                gasId: g.gasId,
+                percentage: g.percentage
+            }));
+
+            await db.PlanetAtmosphere.bulkCreate(atmosphereData, { transaction });
+
+            // 4. Commit and Return full structure
+            await transaction.commit();
+
+            // Fetch fully to return
+            const finalPlanet = await db.Planet.findByPk(newPlanet.id, {
+                include: [
+                    { model: db.PlanetPhysical, as: 'physical' },
+                    { model: db.PlanetOrbit, as: 'orbit' },
+                    { model: db.Moon, as: 'moons' },
+                    {
+                        model: db.Gas,
+                        as: 'gases',
+                        through: { attributes: ['percentage'] }
+                    }
                 ]
             });
-            return success(res, newPlanet, 'Planet created successfully', 201);
+
+            return success(res, finalPlanet, 'Planet created successfully', 201);
         } catch (err) {
+            await transaction.rollback();
             return error(res, 'Failed to create planet', 400, err.message);
         }
     },
 
     // Update Planet
     update: async (req, res) => {
+        const transaction = await db.sequelize.transaction();
         try {
             const { id } = req.params;
             const data = req.body;
-            const [updated] = await db.Planet.update(data, { where: { id } });
+
+            // 1. Update basic info
+            const [updated] = await db.Planet.update(data, { where: { id }, transaction });
 
             if (!updated) {
-                return error(res, 'Planet not found/no changes', 404);
+                // If ID valid but no changes in basic fields, we still proceed to update associations.
+                // But we should check if planet exists first.
+                const exists = await db.Planet.findByPk(id);
+                if (!exists) {
+                    await transaction.rollback();
+                    return error(res, 'Planet not found', 404);
+                }
             }
 
-            const updatedPlanet = await db.Planet.findByPk(id);
+            // 2. Update/Upsert Associations if provided
+            const { physical, orbit, moons, gases } = data;
+
+            // Physical (One-to-One)
+            if (physical) {
+                await db.PlanetPhysical.upsert({ ...physical, planetId: id }, { transaction });
+            }
+
+            // Orbit (One-to-One)
+            if (orbit) {
+                await db.PlanetOrbit.upsert({ ...orbit, planetId: id }, { transaction });
+            }
+
+            // Moons (One-to-Many): Replace strategy (Delete all, Insert new) - simplest for "full update"
+            if (moons && Array.isArray(moons)) {
+                await db.Moon.destroy({ where: { planetId: id }, transaction });
+                if (moons.length > 0) {
+                    const moonsData = moons.map(m => ({ ...m, planetId: id }));
+                    await db.Moon.bulkCreate(moonsData, { transaction });
+                }
+            }
+
+            // Gases (Many-to-Many via PlanetAtmosphere): Replace strategy
+            if (gases && Array.isArray(gases)) {
+                await db.PlanetAtmosphere.destroy({ where: { planetId: id }, transaction });
+                if (gases.length > 0) {
+                    const atmosphereData = gases.map(g => ({
+                        planetId: id,
+                        gasId: g.gasId,
+                        percentage: g.percentage
+                    }));
+                    await db.PlanetAtmosphere.bulkCreate(atmosphereData, { transaction });
+                }
+            }
+
+            await transaction.commit();
+
+            // Fetch and return updated full structure
+            const updatedPlanet = await db.Planet.findByPk(id, {
+                include: [
+                    { model: db.PlanetPhysical, as: 'physical' },
+                    { model: db.PlanetOrbit, as: 'orbit' },
+                    { model: db.Moon, as: 'moons' },
+                    { model: db.Gas, as: 'gases', through: { attributes: ['percentage'] } }
+                ]
+            });
             return success(res, updatedPlanet, 'Planet updated successfully');
+
         } catch (err) {
+            await transaction.rollback();
             return error(res, 'Failed to update planet', 400, err.message);
         }
     },

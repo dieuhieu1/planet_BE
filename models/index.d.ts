@@ -3,7 +3,7 @@ import { Model, Sequelize, ModelStatic, Optional } from 'sequelize';
 // --- Attributes Interfaces ---
 
 export interface UserAttributes {
-    id: string;
+    id: number;
     username: string;
     email: string;
     password?: string;
@@ -25,7 +25,7 @@ export interface LevelAttributes {
 }
 
 export interface PlanetAttributes {
-    id: string;
+    id: number;
     planetId: string;
     nameVi: string;
     nameEn: string;
@@ -40,22 +40,20 @@ export interface PlanetAttributes {
 }
 
 export interface MoonAttributes {
-    id: string;
-    planetId: string;
+    id: number;
+    planetId: number;
     name: string;
     diameterKm: number;
     description: string;
 }
 
 export interface GasAttributes {
-    id: string;
+    id: number;
     name: string;
-    chemicalFormula: string;
-    colorHex: string;
 }
 
 export interface PlanetOrbitAttributes {
-    planetId: string;
+    planetId: number;
     axialTiltDeg: number;
     distanceFromSunKm: number;
     orbitalPeriodDays: number;
@@ -64,7 +62,7 @@ export interface PlanetOrbitAttributes {
 }
 
 export interface PlanetPhysicalAttributes {
-    planetId: string;
+    planetId: number;
     density: number;
     gravity: number;
     massKg: number;
@@ -73,24 +71,17 @@ export interface PlanetPhysicalAttributes {
 }
 
 export interface PlanetAtmosphereAttributes {
-    planetId: string;
-    gasId: string;
+    planetId: number;
+    gasId: number;
     percentage: number;
 }
 
-export interface PlanetEventAttributes {
-    id: string;
-    planetId: string;
-    eventDate: string; // DateOnly -> string or Date
-    title: string;
-    eventType: string;
-    imageUrl: string;
-}
+
 
 export interface QuizAttributes {
-    id: string;
-    planetId: string;
-    creatorId: string;
+    id: number;
+    planetId: number;
+    creatorId: number;
     title: string;
     description: string;
     rewardXp: number;
@@ -100,41 +91,54 @@ export interface QuizAttributes {
 }
 
 export interface QuizAttemptAttributes {
-    id: string;
-    userId: string;
-    quizId: string;
+    id: number;
+    userId: number;
+    quizId: number;
     score: number;
     xpEarned: number;
+    currentIndex: number;
     startedAt: Date;
     finishedAt: Date;
 }
 
 export interface QuestionAttributes {
-    id: string;
-    quizId: string;
+    id: number;
+    quizId: number;
     content: string;
     mediaUrl: string;
 }
 
 export interface QuestionOptionAttributes {
-    id: string;
-    questionId: string;
+    id: number;
+    questionId: number;
     content: string;
     isCorrect: boolean;
 }
 
 export interface AttemptDetailAttributes {
-    id: string;
-    attemptId: string;
-    questionId: string;
-    selectedOptionId: string;
+    id: number;
+    attemptId: number;
+    questionId: number;
+    selectedOptionId: number;
     isCorrect: boolean;
 }
 
 export interface UserFollowAttributes {
-    followerId: string;
-    followingId: string;
+    followerId: number;
+    followingId: number;
     createdAt?: Date;
+}
+
+export interface FileAttributes {
+    id: number;
+    filename: string;
+    public_id: string;
+    url: string;
+    format: string;
+    resource_type: string;
+    details: any;
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 // --- Creation Attributes (Optional fields for creation) ---
@@ -149,18 +153,19 @@ export type GasCreationAttributes = GasAttributes;
 export type PlanetOrbitAttributesCreation = PlanetOrbitAttributes;
 export type PlanetPhysicalAttributesCreation = PlanetPhysicalAttributes;
 export type PlanetAtmosphereAttributesCreation = PlanetAtmosphereAttributes;
-export type PlanetEventCreationAttributes = PlanetEventAttributes;
+
 export type QuizCreationAttributes = Optional<QuizAttributes, 'createdAt' | 'updatedAt'>;
 export type QuizAttemptCreationAttributes = QuizAttemptAttributes;
 export type QuestionCreationAttributes = QuestionAttributes;
 export type QuestionOptionCreationAttributes = QuestionOptionAttributes;
 export type AttemptDetailCreationAttributes = AttemptDetailAttributes;
 export type UserFollowCreationAttributes = Optional<UserFollowAttributes, 'createdAt'>;
+export type FileCreationAttributes = Optional<FileAttributes, 'id' | 'createdAt' | 'updatedAt'>;
 
 // --- Model Classes ---
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
-    public id!: string;
+    public id!: number;
     public username!: string;
     public email!: string;
     public password!: string;
@@ -186,7 +191,7 @@ export class Level extends Model<LevelAttributes, LevelCreationAttributes> imple
 }
 
 export class Planet extends Model<PlanetAttributes, PlanetCreationAttributes> implements PlanetAttributes {
-    public id!: string;
+    public id!: number;
     public planetId!: string;
     public nameVi!: string;
     public nameEn!: string;
@@ -203,8 +208,8 @@ export class Planet extends Model<PlanetAttributes, PlanetCreationAttributes> im
 }
 
 export class Moon extends Model<MoonAttributes, MoonCreationAttributes> implements MoonAttributes {
-    public id!: string;
-    public planetId!: string;
+    public id!: number;
+    public planetId!: number;
     public name!: string;
     public diameterKm!: number;
     public description!: string;
@@ -213,16 +218,13 @@ export class Moon extends Model<MoonAttributes, MoonCreationAttributes> implemen
 }
 
 export class Gas extends Model<GasAttributes, GasCreationAttributes> implements GasAttributes {
-    public id!: string;
+    public id: number;
     public name!: string;
-    public chemicalFormula!: string;
-    public colorHex!: string;
-
     public static associate(models: any): void;
 }
 
 export class PlanetOrbit extends Model<PlanetOrbitAttributes, PlanetOrbitAttributesCreation> implements PlanetOrbitAttributes {
-    public planetId!: string;
+    public planetId!: number;
     public axialTiltDeg!: number;
     public distanceFromSunKm!: number;
     public orbitalPeriodDays!: number;
@@ -233,7 +235,7 @@ export class PlanetOrbit extends Model<PlanetOrbitAttributes, PlanetOrbitAttribu
 }
 
 export class PlanetPhysical extends Model<PlanetPhysicalAttributes, PlanetPhysicalAttributesCreation> implements PlanetPhysicalAttributes {
-    public planetId!: string;
+    public planetId!: number;
     public density!: number;
     public gravity!: number;
     public massKg!: number;
@@ -244,28 +246,19 @@ export class PlanetPhysical extends Model<PlanetPhysicalAttributes, PlanetPhysic
 }
 
 export class PlanetAtmosphere extends Model<PlanetAtmosphereAttributes, PlanetAtmosphereAttributesCreation> implements PlanetAtmosphereAttributes {
-    public planetId!: string;
-    public gasId!: string;
+    public planetId!: number;
+    public gasId!: number;
     public percentage!: number;
 
     public static associate(models: any): void;
 }
 
-export class PlanetEvent extends Model<PlanetEventAttributes, PlanetEventCreationAttributes> implements PlanetEventAttributes {
-    public id!: string;
-    public planetId!: string;
-    public eventDate!: string;
-    public title!: string;
-    public eventType!: string;
-    public imageUrl!: string;
 
-    public static associate(models: any): void;
-}
 
 export class Quiz extends Model<QuizAttributes, QuizCreationAttributes> implements QuizAttributes {
-    public id!: string;
-    public planetId!: string;
-    public creatorId!: string;
+    public id!: number;
+    public planetId!: number;
+    public creatorId!: number;
     public title!: string;
     public description!: string;
     public rewardXp!: number;
@@ -277,11 +270,12 @@ export class Quiz extends Model<QuizAttributes, QuizCreationAttributes> implemen
 }
 
 export class QuizAttempt extends Model<QuizAttemptAttributes, QuizAttemptCreationAttributes> implements QuizAttemptAttributes {
-    public id!: string;
-    public userId!: string;
-    public quizId!: string;
+    public id!: number;
+    public userId!: number;
+    public quizId!: number;
     public score!: number;
     public xpEarned!: number;
+    public currentIndex!: number;
     public startedAt!: Date;
     public finishedAt!: Date;
 
@@ -289,8 +283,8 @@ export class QuizAttempt extends Model<QuizAttemptAttributes, QuizAttemptCreatio
 }
 
 export class Question extends Model<QuestionAttributes, QuestionCreationAttributes> implements QuestionAttributes {
-    public id!: string;
-    public quizId!: string;
+    public id!: number;
+    public quizId!: number;
     public content!: string;
     public mediaUrl!: string;
 
@@ -298,8 +292,8 @@ export class Question extends Model<QuestionAttributes, QuestionCreationAttribut
 }
 
 export class QuestionOption extends Model<QuestionOptionAttributes, QuestionOptionCreationAttributes> implements QuestionOptionAttributes {
-    public id!: string;
-    public questionId!: string;
+    public id!: number;
+    public questionId!: number;
     public content!: string;
     public isCorrect!: boolean;
 
@@ -307,19 +301,34 @@ export class QuestionOption extends Model<QuestionOptionAttributes, QuestionOpti
 }
 
 export class AttemptDetail extends Model<AttemptDetailAttributes, AttemptDetailCreationAttributes> implements AttemptDetailAttributes {
-    public id!: string;
-    public attemptId!: string;
-    public questionId!: string;
-    public selectedOptionId!: string;
+    public id!: number;
+    public attemptId!: number;
+    public questionId!: number;
+    public selectedOptionId!: number;
     public isCorrect!: boolean;
 
     public static associate(models: any): void;
 }
 
 export class UserFollow extends Model<UserFollowAttributes, UserFollowCreationAttributes> implements UserFollowAttributes {
-    public followerId!: string;
-    public followingId!: string;
+    public followerId!: number;
+    public followingId!: number;
     public readonly createdAt!: Date;
+
+    public static associate(models: any): void;
+}
+
+
+export class File extends Model<FileAttributes, FileCreationAttributes> implements FileAttributes {
+    public id!: number;
+    public filename!: string;
+    public public_id!: string;
+    public url!: string;
+    public format!: string;
+    public resource_type!: string;
+    public details: any;
+    public readonly createdAt!: Date;
+    public readonly updatedAt!: Date;
 
     public static associate(models: any): void;
 }
@@ -336,13 +345,14 @@ export interface Db {
     PlanetOrbit: ModelStatic<PlanetOrbit>;
     PlanetPhysical: ModelStatic<PlanetPhysical>;
     PlanetAtmosphere: ModelStatic<PlanetAtmosphere>;
-    PlanetEvent: ModelStatic<PlanetEvent>;
+
     Quiz: ModelStatic<Quiz>;
     QuizAttempt: ModelStatic<QuizAttempt>;
     Question: ModelStatic<Question>;
     QuestionOption: ModelStatic<QuestionOption>;
     AttemptDetail: ModelStatic<AttemptDetail>;
     UserFollow: ModelStatic<UserFollow>;
+    File: ModelStatic<File>;
 }
 
 declare const db: Db;
