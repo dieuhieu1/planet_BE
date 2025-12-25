@@ -85,14 +85,12 @@ const authController = {
             if (!validPass) return error(res, 'Invalid password', 400);
 
             const tokens = generateTokens(user);
-
             await user.update({ refreshToken: tokens.refreshToken });
-
             res.cookie('refreshToken', tokens.refreshToken, {
                 httpOnly: true,
-                secure: false, // Set to true in production (https)
+                secure: false, // Set to true in production
                 path: '/',
-                sameSite: 'strict'
+                sameSite: 'lax'
             });
 
             return success(res, {
@@ -116,6 +114,7 @@ const authController = {
     refreshToken: async (req, res) => {
         try {
             const refreshToken = req.cookies.refreshToken;
+            console.log(req.cookies);
             if (!refreshToken) return error(res, 'Refresh Token required', 401);
 
             let payload = {};
@@ -141,7 +140,7 @@ const authController = {
                 httpOnly: true,
                 secure: false, // Set to true in production
                 path: '/',
-                sameSite: 'strict'
+                sameSite: 'Lax'
             });
 
             return success(res, { accessToken: newTokens.accessToken }, 'Token refreshed');
