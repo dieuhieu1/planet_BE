@@ -9,11 +9,12 @@ module.exports = (sequelize, DataTypes) => {
     }
     Question.init({
         id: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
             primaryKey: true
         },
         quizId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             references: {
                 model: 'Quizzes',
                 key: 'id'

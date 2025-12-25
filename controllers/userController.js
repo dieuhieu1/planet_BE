@@ -1,5 +1,6 @@
 const db = require('../models');
-const { success, error } = require('./responseHelper');
+const { Op } = require('sequelize');
+const { success, error, paginatedSuccess } = require('./responseHelper');
 
 const userController = {
     // Create/Register User
@@ -52,6 +53,149 @@ const userController = {
             return success(res, null, 'Followed successfully');
         } catch (err) {
             return error(res, 'Failed to follow user', 400, err.message);
+        }
+    },
+
+    // User Update Profile (No email/password)
+    updateProfile: async (req, res) => {
+        try {
+            const { id } = req.user; // From verifyToken
+            const { email, password, role, ...updateData } = req.body;
+
+            console.log('Profile update for user:', id, updateData);
+
+            // Prevent updating restricted fields
+            if (email || password || role) {
+                return error(res, 'Cannot update email, password, or role via this endpoint', 400);
+            }
+
+            const user = await db.User.findByPk(id);
+            if (!user) return error(res, 'User not found', 404);
+
+            await user.update(updateData);
+
+            // Reload user with excluded attributes
+            const updatedUser = await db.User.findByPk(id, {
+                attributes: { exclude: ['password', 'refreshToken', 'verificationToken'] }
+            });
+
+            return success(res, updatedUser, 'Profile updated successfully');
+        } catch (err) {
+            console.error('Profile update error:', err);
+            return error(res, 'Failed to update profile', 500, err.message);
+        }
+    },
+
+    // Admin Get All Users
+    getAllUsers: async (req, res) => {
+        try {
+            const page = parseInt(req.query.page) || 1;
+            const limit = parseInt(req.query.limit) || 10;
+            const offset = (page - 1) * limit;
+
+            const { count, rows } = await db.User.findAndCountAll({
+                attributes: { exclude: ['password', 'refreshToken'] },
+                limit,
+                offset
+            });
+            return paginatedSuccess(res, rows, count, page, limit);
+        } catch (err) {
+            return error(res, 'Failed to fetch users', 500, err.message);
+        }
+    },
+
+    // Admin Update User (Any field)
+    adminUpdateUser: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const updateData = req.body;
+
+            const user = await db.User.findByPk(id);
+            if (!user) return error(res, 'User not found', 404);
+
+            // If updating password, hash it (if provided)
+            if (updateData.password) {
+                const bcrypt = require('bcryptjs');
+                const salt = await bcrypt.genSalt(10);
+                updateData.password = await bcrypt.hash(updateData.password, salt);
+            }
+
+            await user.update(updateData);
+            return success(res, user, 'User updated successfully');
+        } catch (err) {
+            return error(res, 'Failed to update user', 500, err.message);
+        }
+    },
+
+    // Get current user's quiz stats
+    getMyStats: async (req, res) => {
+        try {
+            const { id: userId } = req.user; // From verifyToken
+
+            // Get user with level info
+            const user = await db.User.findByPk(userId, {
+                include: [{ model: db.Level }],
+                attributes: ['id', 'username', 'avatarUrl', 'level', 'totalXp']
+            });
+
+            if (!user) return error(res, 'User not found', 404);
+
+            // Get quiz completion stats
+            const completedQuizzes = await db.QuizAttempt.count({
+                where: {
+                    userId,
+                    finishedAt: { [Op.ne]: null }
+                }
+            });
+
+            // Get total stars (number of quizzes completed with perfect score)
+            const perfectScores = await db.QuizAttempt.count({
+                where: {
+                    userId,
+                    score: 10, // Perfect score is 10
+                    finishedAt: { [Op.ne]: null }
+                }
+            });
+
+            // Get total available quizzes
+            const totalQuizzes = await db.Quiz.count();
+
+            return success(res, {
+                user: {
+                    id: user.id,
+                    username: user.username,
+                    avatarUrl: user.avatarUrl,
+                    level: user.level,
+                    totalXp: user.totalXp,
+                    levelInfo: user.Level
+                },
+                stats: {
+                    completedQuizzes,
+                    totalQuizzes,
+                    totalStars: perfectScores
+                }
+            });
+        } catch (err) {
+            return error(res, 'Failed to fetch user stats', 500, err.message);
+        }
+    },
+
+    // Admin Delete User
+    deleteUser: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const user = await db.User.findByPk(id);
+            if (!user) {
+                return error(res, 'User not found', 404);
+            }
+
+            // Simple delete - CASCADE will handle all related records
+            await user.destroy();
+
+            return success(res, null, 'User deleted successfully');
+        } catch (err) {
+            console.error('Delete user error:', err);
+            return error(res, 'Failed to delete user. Please run CASCADE migration first. Error: ' + err.message, 500, err.message);
         }
     }
 };

@@ -18,17 +18,31 @@ module.exports = (sequelize, DataTypes) => {
                 otherKey: 'followingId'
             });
 
-            User.hasMany(models.Quiz, { foreignKey: 'creatorId' });
-            User.hasMany(models.QuizAttempt, { foreignKey: 'userId' });
+            User.hasMany(models.Quiz, {
+                foreignKey: 'creatorId',
+                onDelete: 'CASCADE',
+                hooks: true
+            });
+            User.hasMany(models.QuizAttempt, {
+                foreignKey: 'userId',
+                onDelete: 'CASCADE',
+                hooks: true
+            });
         }
     }
     User.init({
         id: {
-            type: DataTypes.STRING,
-            primaryKey: true
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
+            primaryKey: true,
+            allowNull: false
         },
         username: DataTypes.STRING,
         email: DataTypes.STRING,
+        role: {
+            type: DataTypes.STRING,
+            defaultValue: 'user'
+        },
         password: {
             type: DataTypes.STRING,
             // allowNull: true // Allow null for OAuth users later if needed

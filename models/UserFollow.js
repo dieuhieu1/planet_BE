@@ -7,7 +7,7 @@ module.exports = (sequelize, DataTypes) => {
     }
     UserFollow.init({
         followerId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             primaryKey: true,
             references: {
                 model: 'Users',
@@ -15,7 +15,7 @@ module.exports = (sequelize, DataTypes) => {
             }
         },
         followingId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             primaryKey: true,
             references: {
                 model: 'Users',

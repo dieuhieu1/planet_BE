@@ -10,25 +10,26 @@ module.exports = (sequelize, DataTypes) => {
     }
     AttemptDetail.init({
         id: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
             primaryKey: true
         },
         attemptId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             references: {
                 model: 'QuizAttempts',
                 key: 'id'
             }
         },
         questionId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             references: {
                 model: 'Questions',
                 key: 'id'
             }
         },
         selectedOptionId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             references: {
                 model: 'QuestionOptions',
                 key: 'id'

@@ -24,7 +24,7 @@ const generateTokens = (user) => {
 const authController = {
     register: async (req, res) => {
         try {
-            const { id, username, email, password } = req.body;
+            const { username, email, password } = req.body;
 
             if (typeof password !== 'string') {
                 return error(res, 'Invalid password format', 400);
@@ -44,7 +44,6 @@ const authController = {
             );
 
             const newUser = await db.User.create({
-                id: id || 'user-' + Date.now(),
                 username,
                 email,
                 password: hashedPassword,
@@ -89,9 +88,25 @@ const authController = {
 
             await user.update({ refreshToken: tokens.refreshToken });
 
+            res.cookie('refreshToken', tokens.refreshToken, {
+                httpOnly: true,
+                secure: false, // Set to true in production (https)
+                path: '/',
+                sameSite: 'strict'
+            });
+
             return success(res, {
-                user: { id: user.get('id'), username: user.get('username'), email: user.get('email') },
-                ...tokens
+                user: {
+                    id: user.get('id'),
+                    username: user.get('username'),
+                    email: user.get('email'),
+                    avatarUrl: user.get('avatarUrl'),
+                    level: user.get('level'),
+                    totalXp: user.get('totalXp'),
+                    isVerified: user.get('isVerified'),
+                    role: user.get('role')
+                },
+                accessToken: tokens.accessToken
             }, 'Login successful');
         } catch (err) {
             return error(res, 'Login failed', 500, err.message);
@@ -100,13 +115,16 @@ const authController = {
 
     refreshToken: async (req, res) => {
         try {
-            const { refreshToken } = req.body;
+            const refreshToken = req.cookies.refreshToken;
             if (!refreshToken) return error(res, 'Refresh Token required', 401);
 
             let payload = {};
             try {
                 payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_KEY);
             } catch (e) {
+                if (e.name === 'TokenExpiredError') {
+                    return error(res, 'Refresh Token expired', 403);
+                }
                 return error(res, 'Invalid Refresh Token', 403);
             }
 
@@ -119,7 +137,14 @@ const authController = {
 
             await user.update({ refreshToken: newTokens.refreshToken });
 
-            return success(res, newTokens, 'Token refreshed');
+            res.cookie('refreshToken', newTokens.refreshToken, {
+                httpOnly: true,
+                secure: false, // Set to true in production
+                path: '/',
+                sameSite: 'strict'
+            });
+
+            return success(res, { accessToken: newTokens.accessToken }, 'Token refreshed');
         } catch (err) {
             return error(res, 'Refresh failed', 500, err.message);
         }
@@ -127,10 +152,12 @@ const authController = {
 
     logout: async (req, res) => {
         try {
-            const { id } = req.body;
-            if (!id) return error(res, 'User ID required', 400);
+            // User ID comes from verifyToken middleware (req.user)
+            const userId = req.user.id;
 
-            await db.User.update({ refreshToken: null }, { where: { id } });
+            await db.User.update({ refreshToken: null }, { where: { id: userId } });
+            res.clearCookie('refreshToken');
+            res.clearCookie('accessToken');
             return success(res, null, 'Logged out successfully');
         } catch (err) {
             return error(res, 'Logout failed', 500, err.message);
@@ -213,9 +240,46 @@ const authController = {
         }
     },
 
+    sendVerificationEmail: async (req, res) => {
+        try {
+            const { email } = req.body;
+            if (!email) return error(res, 'Email is required', 400);
+
+            const user = await db.User.findOne({ where: { email } });
+            if (!user) return error(res, 'User not found', 404);
+
+            if (user.isVerified) {
+                return error(res, 'Email already verified', 400);
+            }
+
+            // Generate new token
+            const verificationToken = jwt.sign(
+                { email },
+                process.env.JWT_ACCESS_KEY,
+                { expiresIn: '1d' }
+            );
+
+            await user.update({ verificationToken });
+
+            // Send Email
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+            const verifyLink = `${frontendUrl}/verify-email?token=${verificationToken}`;
+            const subject = 'Veriy Your Email - Planet Web';
+            const html = getVerifyEmailTemplate(verifyLink);
+            const text = `Please verify your email by clicking: ${verifyLink}`;
+
+            await sendEmail(email, subject, text, html);
+
+            return success(res, null, 'Verification email sent');
+        } catch (err) {
+            return error(res, 'Failed to send verification email', 500, err.message);
+        }
+    },
+
     resetPassword: async (req, res) => {
         try {
             const { token, newPassword } = req.body;
+            console.log(req.body)
             if (!token || !newPassword) return error(res, 'Missing token or new password', 400);
 
             let payload = {};
