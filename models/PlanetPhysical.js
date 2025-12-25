@@ -8,7 +8,7 @@ module.exports = (sequelize, DataTypes) => {
     }
     PlanetPhysical.init({
         planetId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             primaryKey: true,
             references: {
                 model: 'Planets',

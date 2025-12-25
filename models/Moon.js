@@ -8,11 +8,12 @@ module.exports = (sequelize, DataTypes) => {
     }
     Moon.init({
         id: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
             primaryKey: true
         },
         planetId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             references: {
                 model: 'Planets',
                 key: 'id'
@@ -24,6 +25,7 @@ module.exports = (sequelize, DataTypes) => {
     }, {
         sequelize,
         modelName: 'Moon',
+        tableName: 'Moons',
         timestamps: false
     });
     return Moon;

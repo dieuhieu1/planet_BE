@@ -10,18 +10,19 @@ module.exports = (sequelize, DataTypes) => {
     }
     QuizAttempt.init({
         id: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
             primaryKey: true
         },
         userId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             references: {
                 model: 'Users',
                 key: 'id'
             }
         },
         quizId: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
             references: {
                 model: 'Quizzes',
                 key: 'id'
@@ -29,8 +30,22 @@ module.exports = (sequelize, DataTypes) => {
         },
         score: DataTypes.FLOAT,
         xpEarned: DataTypes.INTEGER,
+        currentIndex: {
+            type: DataTypes.INTEGER,
+            defaultValue: 0
+        },
         startedAt: DataTypes.DATE,
-        finishedAt: DataTypes.DATE
+        finishedAt: DataTypes.DATE,
+        questionsOrder: {
+            type: DataTypes.TEXT, // Stores JSON string of question IDs
+            get() {
+                const rawValue = this.getDataValue('questionsOrder');
+                return rawValue ? JSON.parse(rawValue) : [];
+            },
+            set(value) {
+                this.setDataValue('questionsOrder', JSON.stringify(value));
+            }
+        }
     }, {
         sequelize,
         modelName: 'QuizAttempt',

@@ -6,14 +6,14 @@ module.exports = (sequelize, DataTypes) => {
             Planet.hasOne(models.PlanetPhysical, { foreignKey: 'planetId', as: 'physical' });
             Planet.hasOne(models.PlanetOrbit, { foreignKey: 'planetId', as: 'orbit' });
             Planet.hasMany(models.Moon, { foreignKey: 'planetId', as: 'moons' });
-            Planet.hasMany(models.PlanetEvent, { foreignKey: 'planetId', as: 'events' });
             Planet.belongsToMany(models.Gas, { through: models.PlanetAtmosphere, foreignKey: 'planetId', as: 'gases' });
             Planet.hasMany(models.Quiz, { foreignKey: 'planetId', as: 'quizzes' });
         }
     }
     Planet.init({
         id: {
-            type: DataTypes.STRING,
+            type: DataTypes.INTEGER,
+            autoIncrement: true,
             primaryKey: true,
             allowNull: false
         },
