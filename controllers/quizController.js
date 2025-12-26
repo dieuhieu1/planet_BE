@@ -339,6 +339,7 @@ const quizController = {
     // Submit Single Answer
     submitAnswer: async (req, res) => {
         try {
+            const { id: userId } = req.user; // From verifyToken
             const { attemptId, questionId, selectedOptionId } = req.body;
 
             const attempt = await db.QuizAttempt.findByPk(attemptId);
@@ -376,25 +377,22 @@ const quizController = {
 
                 score = totalQuestions > 0 ? (correctCount / totalQuestions) * 10 : 0;
 
-
                 // Get Quiz for XP reward
                 const quiz = await db.Quiz.findByPk(attempt.quizId);
 
                 // Check if user has completed this quiz before
-                const previousCompletions = await db.QuizAttempt.count({
+                const hasEarnedXpBefore = await db.QuizAttempt.count({
                     where: {
                         userId: attempt.userId,
                         quizId: attempt.quizId,
-                        finishedAt: { [Op.ne]: null },
+                        xpEarned: { [Op.gt]: 0 },
                         id: { [Op.ne]: attemptId } // Exclude current attempt
                     }
                 });
 
-                const isFirstCompletion = previousCompletions === 0;
-
                 // Only award XP if user got ALL answers correct (perfect score) AND it's first completion
                 const isPerfectScore = correctCount === totalQuestions;
-                xpEarned = (quiz && isPerfectScore && isFirstCompletion) ? quiz.rewardXp : 0;
+                xpEarned = (quiz && isPerfectScore && !hasEarnedXpBefore) ? quiz.rewardXp : 0;
 
                 // Update Attempt
                 await attempt.update({
@@ -402,7 +400,7 @@ const quizController = {
                     xpEarned,
                     finishedAt: new Date()
                 });
-
+             
                 // Update User XP and Level ONLY if this is the first completion
                 if (xpEarned > 0) {
                     const user = await db.User.findByPk(attempt.userId);

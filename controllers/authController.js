@@ -114,7 +114,6 @@ const authController = {
     refreshToken: async (req, res) => {
         try {
             const refreshToken = req.cookies.refreshToken;
-            console.log(req.cookies);
             if (!refreshToken) return error(res, 'Refresh Token required', 401);
 
             let payload = {};
@@ -278,7 +277,6 @@ const authController = {
     resetPassword: async (req, res) => {
         try {
             const { token, newPassword } = req.body;
-            console.log(req.body)
             if (!token || !newPassword) return error(res, 'Missing token or new password', 400);
 
             let payload = {};
